@@ -1,0 +1,198 @@
+import cv2
+import dlib
+import numpy as np
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Caminhos para o predictor e a pasta de trabalho
+predictor_path = '/Users/robertmuzy/Library/CloudStorage/OneDrive-Pessoal/2-Doutorado/1-TESE/1-fWHR/0-EXECUCOMP/shape_predictor_68_face_landmarks.dat'
+work_dir = '/Users/robertmuzy/Library/CloudStorage/OneDrive-Pessoal/2-Doutorado/1-TESE/1-fWHR/0-EXECUCOMP/'
+
+# Inicializar o detector de rostos e o preditor de landmarks
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor(predictor_path)
+
+input_dir = '/Users/robertmuzy/Library/CloudStorage/OneDrive-Pessoal/2-Doutorado/1-TESE/1-fWHR/0-EXECUCOMP/Fotos'
+output_dir = '/Users/robertmuzy/Library/CloudStorage/OneDrive-Pessoal/2-Doutorado/1-TESE/1-fWHR/0-EXECUCOMP/Fotos_alinhadas'
+
+os.makedirs(output_dir, exist_ok=True)
+
+# Função para alinhar a face na imagem
+def align_face(image_path, predictor, output_path):
+    # Carregar a imagem
+    img = cv2.imread(image_path)
+    if img is None:
+        return "Erro ao carregar a imagem."
+
+    # Converter para escala de cinza se necessário
+    if len(img.shape) == 2 or img.shape[2] == 1:
+        gray = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    else:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Detector de faces
+    detector = dlib.get_frontal_face_detector()
+    faces = detector(gray, 1)
+
+    if len(faces) != 1:
+        return "Nenhuma ou mais de uma face detectada."
+
+    face = faces[0]
+    landmarks = predictor(gray, face)
+
+    # Pontos de referência para alinhamento (olhos e nariz)
+    left_eye = (landmarks.part(36).x, landmarks.part(36).y)
+    right_eye = (landmarks.part(45).x, landmarks.part(45).y)
+    nose_tip = (landmarks.part(30).x, landmarks.part(30).y)
+
+    # Calcular ângulo de rotação usando os olhos
+    dY = right_eye[1] - left_eye[1]
+    dX = right_eye[0] - left_eye[0]
+    angle = np.degrees(np.arctan2(dY, dX))
+
+    # Calcular o centro entre os olhos
+    eyes_center = ((left_eye[0] + right_eye[0]) // 2, (left_eye[1] + right_eye[1]) // 2)
+
+    # Matriz de rotação para alinhar a imagem
+    M = cv2.getRotationMatrix2D(eyes_center, angle, 1)
+
+    # Aplicar a transformação
+    aligned_img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]))
+
+    # Salvar a imagem alinhada
+    cv2.imwrite(output_path, aligned_img)
+    return None
+
+# Processar as imagens
+for filename in os.listdir(input_dir):
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+        input_path = os.path.join(input_dir, filename)
+        output_path = os.path.join(output_dir, filename)
+        error = align_face(input_path, predictor, output_path)
+
+        if error:
+            print(f"Erro no arquivo {filename}: {error}")
+
+processed_dir = '/Users/robertmuzy/Library/CloudStorage/OneDrive-Pessoal/2-Doutorado/1-TESE/1-fWHR/0-EXECUCOMP/Fotos_processadas'
+landmark_dir = os.path.join(processed_dir, 'Fotos_landmark')
+os.makedirs(landmark_dir, exist_ok=True)
+
+data = []
+errors = []
+
+# Processamento das imagens e salvamento dos resultados
+for filename in os.listdir(processed_dir):
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+        image_path = os.path.join(processed_dir, filename)
+        result, error = process_image(image_path, predictor, landmark_dir)
+
+        if error:
+            errors.append((filename, error))
+        else:
+            data.append(result)
+
+
+
+
+
+def distance_between_points(p1, p2):
+    return np.linalg.norm(np.array([p1.x, p1.y]) - np.array([p2.x, p2.y]))
+
+def process_image(image_path, predictor, output_dir):
+    img = cv2.imread(image_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    detector = dlib.get_frontal_face_detector()
+    faces = detector(gray)
+
+    if len(faces) == 0:
+        return None, "No face detected"
+    
+    face = faces[0]  # Assuming each image has one face
+    landmarks = predictor(gray, face)
+
+    # Calculating measures
+    ponto_medio_21_22 = ((landmarks.part(21).x + landmarks.part(22).x) // 2, (landmarks.part(21).y + landmarks.part(22).y) // 2)
+    altura1 = np.linalg.norm(np.array([ponto_medio_21_22[0], ponto_medio_21_22[1]]) - np.array([landmarks.part(51).x, landmarks.part(51).y]))
+    altura2 = distance_between_points(landmarks.part(27), landmarks.part(51))
+    largura_zigo = distance_between_points(landmarks.part(0), landmarks.part(16))
+    largura_mac = distance_between_points(landmarks.part(1), landmarks.part(15))
+    largura_inf = distance_between_points(landmarks.part(4), landmarks.part(12))
+
+    # fWHR calculations
+    fwhr1 = largura_zigo / altura1
+    fwhr2 = largura_zigo / altura2
+    fwhr3 = largura_mac / altura1
+    fwhr4 = largura_mac / altura2
+    proem = largura_mac / largura_inf
+    
+    # Drawing landmarks and rectangles for each measure and saving the images
+    base_filename = os.path.splitext(os.path.basename(image_path))[0]
+    
+    for measure in ['fwhr1', 'fwhr2', 'fwhr3', 'fwhr4', 'proem']:
+        img_copy = img.copy()
+
+        # Draw landmarks
+        for n in range(0, 68):
+            x = landmarks.part(n).x
+            y = landmarks.part(n).y
+            cv2.circle(img_copy, (x, y), 1, (255, 0, 0), -1)
+
+        # Draw rectangle for the measure
+        if measure == 'fwhr1':
+            cv2.rectangle(img_copy, (landmarks.part(0).x, ponto_medio_21_22[1]), (landmarks.part(16).x, landmarks.part(51).y), (0, 255, 0), 1)
+        elif measure == 'fwhr2':
+            cv2.rectangle(img_copy, (landmarks.part(0).x, landmarks.part(27).y), (landmarks.part(16).x, landmarks.part(51).y), (255, 0, 0), 1)
+        elif measure == 'fwhr3':
+            cv2.rectangle(img_copy, (landmarks.part(1).x, ponto_medio_21_22[1]), (landmarks.part(15).x, landmarks.part(51).y), (0, 0, 255), 1)
+        elif measure == 'fwhr4':
+            cv2.rectangle(img_copy, (landmarks.part(1).x, landmarks.part(27).y), (landmarks.part(15).x, landmarks.part(51).y), (255, 255, 0), 1)
+        elif measure == 'proem':
+            # Para proem, você pode precisar de desenho criativo para representar as duas larguras
+            # Talvez desenhar duas linhas para representar largura máxima e inferior
+            cv2.line(img_copy, (landmarks.part(0).x, landmarks.part(0).y), (landmarks.part(16).x, landmarks.part(16).y), (0, 255, 255), 1)
+            cv2.line(img_copy, (landmarks.part(4).x, landmarks.part(4).y), (landmarks.part(12).x, landmarks.part(12).y), (255, 0, 255), 1)       
+       
+        # Save the image
+        output_filename = f"{base_filename}_{measure}.jpg"
+        cv2.imwrite(os.path.join(output_dir, output_filename), img_copy)
+
+    return {
+        "filename": os.path.basename(image_path),
+        "altura1": altura1,
+        "altura2": altura2,
+        "largura_zigo": largura_zigo,
+        "largura_mac": largura_mac,
+        "largura_inf": largura_inf,
+        "fwhr1": fwhr1,
+        "fwhr2": fwhr2,
+        "fwhr3": fwhr3,
+        "fwhr4": fwhr4,
+        "proem": proem
+    }, None
+
+processed_dir = '/Users/robertmuzy/Library/CloudStorage/OneDrive-Pessoal/2-Doutorado/1-TESE/1-fWHR/0-EXECUCOMP/Fotos_processadas'
+landmark_dir = os.path.join(processed_dir, 'Fotos_landmark')
+
+data = []
+errors = []
+
+# Processamento das imagens e salvamento dos resultados
+for filename in error_files:
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+        image_path = os.path.join(processed_dir, filename)
+        result, error = process_image(image_path, predictor, landmark_dir)
+
+        if error:
+            errors.append((filename, error))
+        else:
+            data.append(result)
+
+
+# Creating and displaying the DataFrame
+df = pd.DataFrame(data)
+print(df)
+
+# Exibir erros
+for filename, error in errors:
+    print(f"{filename}: {error}")
