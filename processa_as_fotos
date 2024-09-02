@@ -11,10 +11,10 @@ from tensorflow.keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
 from sklearn.model_selection import train_test_split
 
 # Define o caminho para a pasta onde as imagens originais estão armazenadas
-input_path = Path('/EXECUCOMP/Fotos')
+input_path = Path('/(...)/Fotos')
 
 # Define o caminho para a pasta onde as imagens processadas serão salvas
-output_path = Path('/EXECUCOMP/Fotos_processadas')
+output_path = Path('/(...)/Fotos_processadas')
 
 # Cria a pasta de saída se ela não existir
 output_path.mkdir(parents=True, exist_ok=True)
@@ -67,7 +67,7 @@ df_processing_results = pd.DataFrame(processing_results, columns=['Nome do Arqui
 df_processing_results.head()
 
 # Definir o caminho para o detector de landmarks
-predictor_path = '/EXECUCOMP/shape_predictor_68_face_landmarks.dat'
+predictor_path = '/(...)/shape_predictor_68_face_landmarks.dat'
 predictor = dlib.shape_predictor(predictor_path)
 
 # Função para calcular a largura do rosto
@@ -114,8 +114,8 @@ input_images = []
 output_widths = []
 
 # Caminhos para as pastas de entrada e saída
-input_dir = '/EXECUCOMP/dataset/input'
-output_dir = '/EXECUCOMP/dataset/output'
+input_dir = '/(...)/dataset/input'
+output_dir = '/(...)/dataset/output'
 
 # Processar as imagens
 for i in range(1, 11):  # Para 10 fotos
@@ -192,9 +192,9 @@ def process_and_save_images(input_dir, output_dir, processed_dir, target_size=(1
             cv2.imwrite(save_path, processed_image * 255)  # Reescalando ao salvar
 
 # Caminhos para as pastas de entrada e saída
-input_dir = '/EXECUCOMP/dataset/input'
-output_dir = '/EXECUCOMP/dataset/output'
-processed_dir = '/EXECUCOMP/dataset/processed'
+input_dir = '/(...)/dataset/input'
+output_dir = '/(...)/dataset/output'
+processed_dir = '/(...)/dataset/processed'
 
 process_and_save_images(input_dir, output_dir, processed_dir)
 
@@ -208,7 +208,7 @@ for filename in os.listdir(processed_dir):
         print(f"Imagem processada carregada com sucesso: {processed_image_path}")
 
 # Inicializar o detector de landmarks
-predictor_path = '/EXECUCOMP/shape_predictor_68_face_landmarks.dat'
+predictor_path = '/(...)/shape_predictor_68_face_landmarks.dat'
 predictor = dlib.shape_predictor(predictor_path)
 detector = dlib.get_frontal_face_detector()
 
