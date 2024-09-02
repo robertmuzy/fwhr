@@ -113,8 +113,9 @@ def process_image(image_path, predictor, output_dir):
 
     # Calculating measures
     ponto_medio_21_22 = ((landmarks.part(21).x + landmarks.part(22).x) // 2, (landmarks.part(21).y + landmarks.part(22).y) // 2)
+    ponto_medio_21_22_27 = ((ponto_medio_21_22[0] + landmarks.part(27).x) // 2, (ponto_medio_21_22[1] + landmarks.part(27).y) // 2)
     altura1 = np.linalg.norm(np.array([ponto_medio_21_22[0], ponto_medio_21_22[1]]) - np.array([landmarks.part(51).x, landmarks.part(51).y]))
-    altura2 = distance_between_points(landmarks.part(27), landmarks.part(51))
+    altura2 = np.linalg.norm(np.array([ponto_medio_21_22_27[0], ponto_medio_21_22_27[1]]) - np.array([landmarks.part(51).x, landmarks.part(51).y]))
     largura_zigo = distance_between_points(landmarks.part(0), landmarks.part(16))
     largura_mac = distance_between_points(landmarks.part(1), landmarks.part(15))
     largura_inf = distance_between_points(landmarks.part(4), landmarks.part(12))
@@ -146,7 +147,7 @@ def process_image(image_path, predictor, output_dir):
         elif measure == 'fwhr3':
             cv2.rectangle(img_copy, (landmarks.part(1).x, ponto_medio_21_22[1]), (landmarks.part(15).x, landmarks.part(51).y), (0, 0, 255), 1)
         elif measure == 'fwhr4':
-            cv2.rectangle(img_copy, (landmarks.part(1).x, landmarks.part(27).y), (landmarks.part(15).x, landmarks.part(51).y), (255, 255, 0), 1)
+            cv2.rectangle(img_copy, (landmarks.part(1).x, ponto_medio_21_22_27[1]), (landmarks.part(15).x, landmarks.part(51).y), (255, 255, 0), 1)
         elif measure == 'proem':
             # Para proem, você pode precisar de desenho criativo para representar as duas larguras
             # Talvez desenhar duas linhas para representar largura máxima e inferior
